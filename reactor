@@ -1,0 +1,73 @@
+Reactor = {}
+
+function Reactor:new(periph_name)
+  local self = setmetatable({}, Reactor)
+  
+  self.periph_name = periph_name
+  self.periph = peripheral.wrap(periph_name)
+  self.moving_window = 30
+  
+  self.last_fuel = {}
+  self.energy_produced = {}
+  for i = 1, self.moving_window do
+    self.last_fuel[i] = self.periph.getFuelAmount()
+    self.energy_produced[i] = 0
+  end
+  
+  return self
+end
+
+function Reactor:get_stored_percentage()
+  local stored = self.periph.getEnergyStored()
+  local max_stored = 1e7  
+  local stored_percentage = 100 * stored / max_stored
+  
+  return stored_percentage
+end
+
+function Reactor:adjust_control_level()
+  local optimal = 76
+  local stored_percentage = self:get_stored_percentage()
+  
+  if stored_percentage > optimal then
+    self.periph.setAllControlRodLevels(math.floor(stored_percentage))
+  else
+    self.periph.setAllControlRodLevels(optimal)
+  end
+end
+
+function Reactor:get_efficiency()
+  -- total energy produced over recorded period
+  local total_power = sum(self.energy_produced)
+  
+  -- total fuel used over recorded period
+  local total_fuel_use = self.last_fuel[1] - self.last_fuel[#self.last_fuel]
+  
+  return total_power / total_fuel_use
+end
+
+function Reactor:update_state()
+  table.remove(self.last_fuel, 1)
+  table.insert(self.last_fuel, self.periph.getFuelAmount())
+  
+  table.remove(self.energy_produced, 1)
+  table.insert(self.energy_produced, self.periph.getEnergyProducedLastTick())
+end
+
+function Reactor:set_active(state)
+  self.periph.setActive(state)
+end
+
+Reactor.__index = Reactor
+
+
+function sum(tbl)
+  local total = 0.0
+
+  for i = 1, #tbl do
+    total = total + tbl[i]
+  end
+  
+  return total
+  
+end
