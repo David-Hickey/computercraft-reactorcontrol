@@ -1,0 +1,9 @@
+Screen = {}
+
+function Screen:new(periph_name)
+  local self = setmetatable({}, Screen)
+  
+  self.periph_name = periph_name
+  
+  return self
+end
