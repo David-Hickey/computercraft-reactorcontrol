@@ -1,7 +1,8 @@
-os.loadAPI("reactor")
+os.loadAPI("reactor_api")
+os.loadAPI("reactor_display")
 
 
-local r = reactor.Reactor:new("BigReactors-Reactor_1")
+local r = reactor_api.Reactor:new("BigReactors-Reactor_1")
 
 while true do
   r:adjust_control_level()
