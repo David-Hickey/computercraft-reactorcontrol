@@ -1,10 +1,16 @@
 Reactor = {}
+Reactor.__index = Reactor
 
 function Reactor:new(periph_name)
   local self = setmetatable({}, Reactor)
   
   self.periph_name = periph_name
   self.periph = peripheral.wrap(periph_name)
+  
+  if self.periph == nil or not self.periph.getConnected() then
+    error("Unable to connect to peripheral: " .. tostring(self.periph_name))
+  end
+  
   self.moving_window = 30
   
   self.last_fuel = {}
@@ -17,23 +23,57 @@ function Reactor:new(periph_name)
   return self
 end
 
+function Reactor:get_stored_amount()
+  local stored = self.periph.getEnergyStored()
+  return stored
+end
+
 function Reactor:get_stored_percentage()
   local stored = self.periph.getEnergyStored()
   local max_stored = 1e7  
-  local stored_percentage = 100 * stored / max_stored
+  local stored_percentage = (100.0 * stored) / max_stored
   
   return stored_percentage
 end
 
 function Reactor:adjust_control_level()
-  local optimal = 76
+  local optimal = 51
   local stored_percentage = self:get_stored_percentage()
   
   if stored_percentage > optimal then
-    self.periph.setAllControlRodLevels(math.floor(stored_percentage))
+    self.control_level = math.min(math.floor(stored_percentage + 1), 100)
   else
-    self.periph.setAllControlRodLevels(optimal)
+    self.control_level = optimal
   end
+  
+  self.periph.setAllControlRodLevels(self.control_level)
+end
+
+function Reactor:get_control_level()
+  return self.control_level
+end
+
+function Reactor:get_fuel_level()
+  return self.last_fuel[#self.last_fuel]
+end
+
+function Reactor:get_fuel_percentage()
+  local max_fuel = self.periph.getFuelAmountMax()
+  local stored_fuel = self:get_fuel_level()
+  
+  return (100.0 * stored_fuel) / max_fuel
+end
+
+function Reactor:is_active()
+  return self.periph.getActive()
+end
+
+function Reactor:toggle_active_state()
+  local active = self:is_active()
+  
+  self:set_active(not active)
+  
+  return not active
 end
 
 function Reactor:get_efficiency()
@@ -57,8 +97,6 @@ end
 function Reactor:set_active(state)
   self.periph.setActive(state)
 end
-
-Reactor.__index = Reactor
 
 
 function sum(tbl)

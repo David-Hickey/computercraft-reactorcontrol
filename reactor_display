@@ -1,9 +1,97 @@
-Screen = {}
+ReactorScreen = {}
+ReactorScreen.__index = ReactorScreen
 
-function Screen:new(periph_name)
-  local self = setmetatable({}, Screen)
+function ReactorScreen:new(periph_name, reactor)
+  local self = setmetatable({}, ReactorScreen)
   
   self.periph_name = periph_name
+  self.periph = peripheral.wrap(self.periph_name)
+  self.reactor = reactor
   
   return self
+end
+
+function ReactorScreen:get_x_centre()
+  local w, h = self.periph.getSize()
+  
+  return w / 2
+end
+
+function ReactorScreen:get_y_centre()
+  local w, h = self.periph.getSize()
+  
+  return h / 2
+end
+
+function ReactorScreen:clear()
+  self.periph.clear()
+end
+
+function ReactorScreen:print_centred(text, y)
+  local length = string.len(text)
+  local start = self:get_x_centre() - (length / 2)
+  
+  local orig_x, orig_y = self.periph.getCursorPos()
+  self.periph.setCursorPos(start, y)
+  self.periph.write(text)
+  self.periph.setCursorPos(orig_x, orig_y)
+end
+
+function ReactorScreen:set_print_colour(c)
+  self.periph.setTextColour(c)
+end
+
+function ReactorScreen:reset_colour()
+  self.periph.setTextColour(colours.white)
+end
+
+function ReactorScreen:update()
+  -- do stuff with self.reactor to pretty-print status
+  local y_centre = self:get_y_centre()
+  
+  self:clear()
+  
+  if self.reactor:is_active() then
+    self:set_print_colour(colours.green)
+    self:print_centred("Reactor active", y_centre - 3)
+    self:print_centred("[ STOP ]", y_centre + 3)
+    self:reset_colour()
+  else
+    self:set_print_colour(colours.red)
+    self:print_centred("Reactor inactive", y_centre - 3)
+    self:print_centred("[ START ]", y_centre + 3)
+    self:reset_colour()
+  end
+  
+  self:print_centred("Storage: " .. tostring(self.reactor:get_stored_amount()) .. " RF (" .. tostring(self.reactor:get_stored_percentage()) .. "%)", y_centre - 2)
+  self:print_centred("Efficiency: " .. tostring(self.reactor:get_efficiency()) .. " RF/mB", y_centre - 1)
+  self:print_centred("Fuel: " .. tostring(self.reactor:get_fuel_level()) .. " mB (" .. tostring(self.reactor:get_fuel_percentage()) .. "%)", y_centre)
+  self:print_centred("Control: " .. tostring(self.reactor:get_control_level()) .. "%", y_centre + 1)
+  
+end
+
+-- callback is a function that accepts a ReactorScreen and a string explaining
+-- the reason for the callback triggering.
+function ReactorScreen:start_event_loop(callback)
+  local refresh_rate = 3
+
+  while true do
+    local timer_id = os.startTimer(refresh_rate)
+    local event, button, x, y
+    
+    repeat
+      event, button, x, y = os.pullEvent()
+    until event == "monitor_touch" or (event == "timer" and button == timer_id)
+        
+    if event == "timer" then
+        self:update()
+        callback(self, "timer")
+    elseif event == "monitor_touch" then
+      self.reactor:toggle_active_state()
+      self:update()
+    
+      -- then must handle click event
+      callback(self, "monitor_touch")
+    end
+  end
 end

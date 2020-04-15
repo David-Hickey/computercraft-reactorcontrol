@@ -3,11 +3,13 @@ os.loadAPI("reactor_display")
 
 
 local r = reactor_api.Reactor:new("BigReactors-Reactor_1")
+local d = reactor_display.ReactorScreen:new("monitor_0", r)
 
-while true do
+function callback(disp, reason)
   r:adjust_control_level()
-  print("Efficiency: " .. tostring(r:get_efficiency()) .. " RF/mB")
-
   r:update_state()
-  os.sleep(1)
+  
+  print("Finished callback")
 end
+
+d:start_event_loop(callback)
